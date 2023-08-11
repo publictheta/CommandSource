@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Prepare
+        run: |
+          function export-env () {
+            echo "$1=$(xcodebuild -showBuildSettings | grep -e " $1 " | sed "s/[ ]*$1 = //")" >> $GITHUB_ENV
+          }
+
+          export-env FULL_PRODUCT_NAME
+          export-env INSTALL_PATH
+          export-env PRODUCT_MODULE_NAME
+          export-env PRODUCT_NAME
+      - name: Build
+        run: |
+          xcodebuild install DSTROOT=build/root
+      - name: Package
+        run: |
+          hdiutil create \
+            -fs HFS+ \
+            -srcfolder "build/root/$INSTALL_PATH/$FULL_PRODUCT_NAME" \
+            -volname "$PRODUCT_NAME" \
+            "build/$PRODUCT_MODULE_NAME.dmg"
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/${{ env.PRODUCT_MODULE_NAME }}.dmg
+    permissions:
+      contents: write
