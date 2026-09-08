@@ -7,25 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		6870526129E19C7800F524B9 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 6870526029E19C7800F524B9 /* .gitignore */; };
-		68905576257938CF00A98B73 /* CGEventMask+fromTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68905575257938CF00A98B73 /* CGEventMask+fromTypes.swift */; };
-		689055792579391800A98B73 /* CGKeyCode+jis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689055782579391800A98B73 /* CGKeyCode+jis.swift */; };
-		6890557C2579394200A98B73 /* CGEventFlags+command.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6890557B2579394200A98B73 /* CGEventFlags+command.swift */; };
 		68AA20E32578E7CB00857812 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AA20E22578E7CB00857812 /* AppDelegate.swift */; };
 		68AA20E72578E7CD00857812 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 68AA20E62578E7CD00857812 /* Assets.xcassets */; };
 		68AA20F92578E99000857812 /* EventComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AA20F82578E99000857812 /* EventComposer.swift */; };
-		68C982112A85E71F0062A5A6 /* .swift-format in Resources */ = {isa = PBXBuildFile; fileRef = 68C982102A85E71F0062A5A6 /* .swift-format */; };
-		68C982142A85FA7F0062A5A6 /* LICENSE-APACHE in Resources */ = {isa = PBXBuildFile; fileRef = 68C982122A85FA7F0062A5A6 /* LICENSE-APACHE */; };
-		68C982152A85FA7F0062A5A6 /* LICENSE-MIT in Resources */ = {isa = PBXBuildFile; fileRef = 68C982132A85FA7F0062A5A6 /* LICENSE-MIT */; };
-		68C9821C2A85FBCA0062A5A6 /* build.yml in Resources */ = {isa = PBXBuildFile; fileRef = 68C9821B2A85FBCA0062A5A6 /* build.yml */; };
 		68CFB6F929E187950084BDDB /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CFB6F829E187950084BDDB /* main.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		6870526029E19C7800F524B9 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
-		68905575257938CF00A98B73 /* CGEventMask+fromTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CGEventMask+fromTypes.swift"; sourceTree = "<group>"; };
-		689055782579391800A98B73 /* CGKeyCode+jis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CGKeyCode+jis.swift"; sourceTree = "<group>"; };
-		6890557B2579394200A98B73 /* CGEventFlags+command.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CGEventFlags+command.swift"; sourceTree = "<group>"; };
 		68AA20DF2578E7CB00857812 /* CommandSource.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CommandSource.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		68AA20E22578E7CB00857812 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		68AA20E62578E7CD00857812 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -57,7 +46,6 @@
 				68CFB6F829E187950084BDDB /* main.swift */,
 				68AA20E22578E7CB00857812 /* AppDelegate.swift */,
 				68AA20F82578E99000857812 /* EventComposer.swift */,
-				68905574257938AF00A98B73 /* Extensions */,
 			);
 			name = Sources;
 			path = CommandSource/Sources;
@@ -80,16 +68,6 @@
 			);
 			name = "Supporting Files";
 			path = CommandSource;
-			sourceTree = "<group>";
-		};
-		68905574257938AF00A98B73 /* Extensions */ = {
-			isa = PBXGroup;
-			children = (
-				68905575257938CF00A98B73 /* CGEventMask+fromTypes.swift */,
-				689055782579391800A98B73 /* CGKeyCode+jis.swift */,
-				6890557B2579394200A98B73 /* CGEventFlags+command.swift */,
-			);
-			name = Extensions;
 			sourceTree = "<group>";
 		};
 		68AA20D62578E7CB00857812 = {
@@ -191,11 +169,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				68C982142A85FA7F0062A5A6 /* LICENSE-APACHE in Resources */,
-				6870526129E19C7800F524B9 /* .gitignore in Resources */,
-				68C982112A85E71F0062A5A6 /* .swift-format in Resources */,
-				68C982152A85FA7F0062A5A6 /* LICENSE-MIT in Resources */,
-				68C9821C2A85FBCA0062A5A6 /* build.yml in Resources */,
 				68AA20E72578E7CD00857812 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -210,9 +183,6 @@
 				68AA20F92578E99000857812 /* EventComposer.swift in Sources */,
 				68AA20E32578E7CB00857812 /* AppDelegate.swift in Sources */,
 				68CFB6F929E187950084BDDB /* main.swift in Sources */,
-				6890557C2579394200A98B73 /* CGEventFlags+command.swift in Sources */,
-				68905576257938CF00A98B73 /* CGEventMask+fromTypes.swift in Sources */,
-				689055792579391800A98B73 /* CGKeyCode+jis.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -340,7 +310,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = CommandSource/CommandSource.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -366,7 +335,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = CommandSource/CommandSource.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;

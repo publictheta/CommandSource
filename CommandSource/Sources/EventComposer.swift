@@ -1,25 +1,33 @@
 import Carbon
 import Cocoa
 
-/// 左コマンドキーのキーコード。
-private let COMMAND_LEFT: Int64 = Int64(kVK_Command)
-/// 右コマンドキーのキーコード。
-private let COMMAND_RIGHT: Int64 = Int64(kVK_RightCommand)
-
 /// キーイベントの合成器。
 ///
 /// イベントタップはメインスレッドの実行ループで処理するため、メインアクターに隔離する。
 @MainActor
 class EventComposer {
+    /// 左コマンドキーのキーコード。
+    private static let commandLeft = Int64(kVK_Command)
+    /// 右コマンドキーのキーコード。
+    private static let commandRight = Int64(kVK_RightCommand)
+
+    /// 左コマンドキーが押されていることを表すフラグ（非公開ビットを含む）。
+    private static let maskCommandLeft = CGEventFlags(rawValue: 0x10_0008)
+    /// 右コマンドキーが押されていることを表すフラグ（非公開ビットを含む）。
+    private static let maskCommandRight = CGEventFlags(rawValue: 0x10_0010)
+
+    /// 英数キーのキーコード。
+    private static let jisEisu = CGKeyCode(kVK_JIS_Eisu)
+    /// かなキーのキーコード。
+    private static let jisKana = CGKeyCode(kVK_JIS_Kana)
+
     /// キーの押下と長押しを区別する閾値。押下の場合のみ、英数・かなキーのイベントを発火する。
     ///
     /// `300 * 1000 * 1000 ns = 300 ms`
-    private let threshold: CGEventTimestamp = 300 * 1000 * 1000
+    private static let threshold: CGEventTimestamp = 300 * 1000 * 1000
 
     /// イベントタップ。
     private var tap: CFMachPort?
-    /// 入力ソース。
-    private var source: CFRunLoopSource?
 
     /// 最後に左コマンドキーがkeydownされた時のタイムスタンプ。
     private var left: CGEventTimestamp?
@@ -28,48 +36,42 @@ class EventComposer {
 
     /// キー変換の状態をリセットする。
     private func clear() {
-        self.left = nil
-        self.right = nil
+        left = nil
+        right = nil
     }
 
     /// コマンドキーのイベントを処理する。
     private func handleCommands(_ event: CGEvent) {
-        let keycode = event.getIntegerValueField(.keyboardEventKeycode)
-
-        switch keycode {
-        case COMMAND_LEFT:
-            if event.flags.contains(.maskLeftCommand) {
-                if self.left == nil {
+        switch event.getIntegerValueField(.keyboardEventKeycode) {
+        case Self.commandLeft:
+            if event.flags.contains(Self.maskCommandLeft) {
+                if left == nil {
                     // keydownとみなす
-                    self.left = event.timestamp
+                    left = event.timestamp
                 }
-            } else {
-                if let left = self.left {
-                    // 閾値以下の間隔でkeyupが発生した場合、英数キーを押す
-                    if event.timestamp - left < self.threshold {
-                        press(.jisEisu)
-                    }
+            } else if let left {
+                // 閾値以下の間隔でkeyupが発生した場合、英数キーを押す
+                if event.timestamp - left < Self.threshold {
+                    press(Self.jisEisu)
+                }
 
-                    // keyupとみなす
-                    self.left = nil
-                }
+                // keyupとみなす
+                self.left = nil
             }
-        case COMMAND_RIGHT:
-            if event.flags.contains(.maskRightCommand) {
-                if self.right == nil {
+        case Self.commandRight:
+            if event.flags.contains(Self.maskCommandRight) {
+                if right == nil {
                     // keydownとみなす
-                    self.right = event.timestamp
+                    right = event.timestamp
                 }
-            } else {
-                if let right = self.right {
-                    // 閾値以下の間隔でkeyupが発生した場合、かなキーを押す
-                    if event.timestamp - right < self.threshold {
-                        press(.jisKana)
-                    }
+            } else if let right {
+                // 閾値以下の間隔でkeyupが発生した場合、かなキーを押す
+                if event.timestamp - right < Self.threshold {
+                    press(Self.jisKana)
+                }
 
-                    // keyupとみなす
-                    self.right = nil
-                }
+                // keyupとみなす
+                self.right = nil
             }
         default:
             break
@@ -81,14 +83,11 @@ class EventComposer {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             // スリープ等により無効になった状態から復帰する。
-            guard let tap = self.tap else {
-                print("[CommandSource]: The previous tap not found.")
-                exit(1)
-            }
-
             clear()
 
-            enableTap(tap)
+            if let tap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+            }
         case .flagsChanged:
             // Commandキーの上下を検知する。
             handleCommands(event)
@@ -102,35 +101,31 @@ class EventComposer {
 
     /// 指定されたキーコードのキーを押す（keydown + keyup）。
     private func press(_ keyCode: CGKeyCode) {
-        guard let keydown = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
-        else {
-            return
+        for keyDown in [true, false] {
+            guard
+                let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: keyDown)
+            else {
+                return
+            }
+
+            event.flags = .maskNonCoalesced
+            event.post(tap: .cghidEventTap)
         }
-
-        guard let keyup = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
-        else {
-            return
-        }
-
-        keydown.flags = .maskNonCoalesced
-        keyup.flags = .maskNonCoalesced
-
-        keydown.post(tap: .cghidEventTap)
-        keyup.post(tap: .cghidEventTap)
     }
 
-    /// イベントタップを作成する。
+    /// キーイベントの変換を有効にする。
     ///
     /// イベントを書き換えたり握りつぶしたりはしないので、listen-only（受動）タップにする。
     /// 受動タップならOSはこのアプリの応答を待たないため、キー入力の遅延を引き起こさない。
-    private func createTap() -> CFMachPort? {
-        return CGEvent.tapCreate(
+    func enable() {
+        let tap = CGEvent.tapCreate(
             tap: .cghidEventTap,
             place: .tailAppendEventTap,
             options: .listenOnly,
-            eventsOfInterest: .fromTypes(.flagsChanged, .keyDown),
+            eventsOfInterest: 1 << CGEventType.flagsChanged.rawValue | 1
+                << CGEventType.keyDown.rawValue,
             callback: { _, type, event, refcon in
-                if let refcon = refcon {
+                if let refcon {
                     // タップはメインスレッドの実行ループに登録しているので、常にメインスレッドで呼ばれる。
                     MainActor.assumeIsolated {
                         Unmanaged<EventComposer>.fromOpaque(refcon).takeUnretainedValue()
@@ -142,68 +137,19 @@ class EventComposer {
             },
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         )
-    }
 
-    /// イベントタップを有効にする。
-    private func enableTap(_ tap: CFMachPort) {
-        CGEvent.tapEnable(tap: tap, enable: true)
-    }
-
-    /// イベントタップを無効にする。
-    private func disableTap(_ tap: CFMachPort) {
-        CGEvent.tapEnable(tap: tap, enable: false)
-    }
-
-    /// 入力ソースを作成する。
-    private func createSource(_ tap: CFMachPort) -> CFRunLoopSource? {
-        return CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-    }
-
-    /// 入力ソースをメインスレッドの実行ループに追加する。
-    private func addSource(_ source: CFRunLoopSource) {
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, CFRunLoopMode.commonModes)
-    }
-
-    /// 入力ソースを削除する。
-    private func removeSource(_ source: CFRunLoopSource) {
-        CFRunLoopRemoveSource(CFRunLoopGetMain(), source, CFRunLoopMode.commonModes)
-        CFRunLoopSourceInvalidate(source)
-    }
-
-    /// キーイベントの変換を有効にする。
-    func enable() {
-        guard let tap = createTap() else {
+        guard let tap else {
             print("[CommandSource]: Failed to create a tap.")
             exit(1)
         }
 
-        guard let source = createSource(tap) else {
-            print("[CommandSource]: Failed to create a run loop source.")
-            exit(1)
-        }
-
-        addSource(source)
-        enableTap(tap)
+        CFRunLoopAddSource(
+            CFRunLoopGetMain(),
+            CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0),
+            .commonModes
+        )
+        CGEvent.tapEnable(tap: tap, enable: true)
 
         self.tap = tap
-        self.source = source
-
-        print("[CommandSource]: Enabled.")
-    }
-
-    /// キーイベントの変換を無効にする。
-    func disable() {
-        if let tap = self.tap {
-            disableTap(tap)
-        }
-
-        if let source = self.source {
-            removeSource(source)
-        }
-
-        self.tap = nil
-        self.source = nil
-
-        print("[CommandSource]: Disabled.")
     }
 }
