@@ -2,38 +2,39 @@ name: build
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "*.*.*"
+  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: macos-latest
+    # `.icon`（Icon Composer 形式）のビルドには Xcode 26 以降が必要
+    runs-on: macos-26
+    timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-      - name: Prepare
-        run: |
-          function export-env () {
-            echo "$1=$(xcodebuild -showBuildSettings | grep -e " $1 " | sed "s/[ ]*$1 = //")" >> $GITHUB_ENV
-          }
+        uses: actions/checkout@v5
 
-          export-env FULL_PRODUCT_NAME
-          export-env INSTALL_PATH
-          export-env PRODUCT_MODULE_NAME
-          export-env PRODUCT_NAME
       - name: Build
-        run: |
-          xcodebuild install DSTROOT=build/root
+        run: xcodebuild install -scheme CommandSource DSTROOT=build/root
+
       - name: Package
         run: |
           hdiutil create \
-            -fs HFS+ \
-            -srcfolder "build/root/$INSTALL_PATH/$FULL_PRODUCT_NAME" \
-            -volname "$PRODUCT_NAME" \
-            "build/$PRODUCT_MODULE_NAME.dmg"
+            -fs APFS \
+            -srcfolder build/root/Applications/CommandSource.app \
+            -volname CommandSource \
+            build/CommandSource.dmg
+
       - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: build/${{ env.PRODUCT_MODULE_NAME }}.dmg
-    permissions:
-      contents: write
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/CommandSource.dmg --generate-notes
