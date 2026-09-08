@@ -1,6 +1,7 @@
 import Cocoa
 import ServiceManagement
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     /// ステータスバーに表示するメニュー。
     lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -23,15 +24,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             accessibilityDescription: "CommandSource"
         )
 
-        // 権限の確認
-        if checkTrusted() {
+        // 権限の確認。許可されていない場合はシステムのダイアログが表示される。
+        if !CGRequestPostEventAccess() {
+            // 英数・かなキーのイベントを投入するのに必要
+            showMessage("アクセシビリティアクセスを許可して再起動してください。")
+        } else if !CGRequestListenEventAccess() {
+            // キー入力を監視するのに必要（アクセシビリティが許可されていれば通常は不要）
+            showMessage("入力監視を許可して再起動してください。")
+        } else {
             // 権限が有効な場合、キーイベントの変換を開始
             composer.enable()
-            messageItem?.isHidden = true
-        } else {
-            // 権限が無効な場合、メニューにメッセージを表示
-            messageItem?.title = "アクセシビリティアクセスを有効にして再起動してください。"
-            messageItem?.isHidden = false
         }
     }
 
@@ -40,16 +42,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         composer.disable()
     }
 
-    /// アクセシビリティアクセスの権限を要求する。
-    ///
-    /// - Returns: 既にアクセスが許可されている場合は `true` を返す。
-    private func checkTrusted() -> Bool {
-        let options =
-            [
-                kAXTrustedCheckOptionPrompt.takeRetainedValue(): true
-            ] as CFDictionary
-
-        return AXIsProcessTrustedWithOptions(options)
+    /// メニューにメッセージを表示する。
+    private func showMessage(_ message: String) {
+        messageItem?.title = message
+        messageItem?.isHidden = false
     }
 
     /// バンドル名を取得する。
@@ -87,6 +83,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: getAppString(), action: nil, keyEquivalent: "")
 
         messageItem = menu.addItem(withTitle: "", action: nil, keyEquivalent: "")
+        messageItem?.isHidden = true
 
         menu.addItem(.separator())
 
@@ -144,10 +141,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// アプリケーションを再起動する。
     @objc func relaunch(_ sender: Any?) {
-        let process = Process()
-        process.executableURL = Bundle.main.executableURL
-        try! process.run()
-        NSApplication.shared.terminate(self)
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration)
+        {
+            _, _ in
+            Task { @MainActor in
+                NSApplication.shared.terminate(nil)
+            }
+        }
     }
 
     /// アプリケーションを終了する。

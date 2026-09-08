@@ -7,6 +7,9 @@ private let COMMAND_LEFT: Int64 = Int64(kVK_Command)
 private let COMMAND_RIGHT: Int64 = Int64(kVK_RightCommand)
 
 /// キーイベントの合成器。
+///
+/// イベントタップはメインスレッドの実行ループで処理するため、メインアクターに隔離する。
+@MainActor
 class EventComposer {
     /// キーの押下と長押しを区別する閾値。押下の場合のみ、英数・かなキーのイベントを発火する。
     ///
@@ -128,8 +131,11 @@ class EventComposer {
             eventsOfInterest: .fromTypes(.flagsChanged, .keyDown),
             callback: { _, type, event, refcon in
                 if let refcon = refcon {
-                    Unmanaged<EventComposer>.fromOpaque(refcon).takeUnretainedValue()
-                        .handle(type, event)
+                    // タップはメインスレッドの実行ループに登録しているので、常にメインスレッドで呼ばれる。
+                    MainActor.assumeIsolated {
+                        Unmanaged<EventComposer>.fromOpaque(refcon).takeUnretainedValue()
+                            .handle(type, event)
+                    }
                 }
 
                 return Unmanaged.passUnretained(event)
