@@ -11,6 +11,7 @@
 		68AA20E72578E7CD00857812 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 68AA20E62578E7CD00857812 /* Assets.xcassets */; };
 		68AA20F92578E99000857812 /* EventComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AA20F82578E99000857812 /* EventComposer.swift */; };
 		68CFB6F929E187950084BDDB /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68CFB6F829E187950084BDDB /* main.swift */; };
+		68A1C0DE2F0000020000ICON /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 68A1C0DE2F0000010000ICON /* AppIcon.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +28,7 @@
 		68C9821B2A85FBCA0062A5A6 /* build.yml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.yaml; path = build.yml; sourceTree = "<group>"; };
 		68CFB6F829E187950084BDDB /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		68D88AFD257950C300365D41 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		68A1C0DE2F0000010000ICON /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +56,7 @@
 		689055722579389100A98B73 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				68A1C0DE2F0000010000ICON /* AppIcon.icon */,
 				68AA20E62578E7CD00857812 /* Assets.xcassets */,
 			);
 			name = Resources;
@@ -169,6 +172,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				68A1C0DE2F0000020000ICON /* AppIcon.icon in Resources */,
 				68AA20E72578E7CD00857812 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
