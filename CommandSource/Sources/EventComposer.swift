@@ -7,17 +7,11 @@ private let COMMAND_LEFT: Int64 = Int64(kVK_Command)
 private let COMMAND_RIGHT: Int64 = Int64(kVK_RightCommand)
 
 /// キーイベントの合成器。
-class EventComposer: NSObject {
-    /// ポインタからインスタンスを作成する。
-    ///
-    static func fromOpaque(_ pointer: UnsafeMutableRawPointer) -> Self {
-        Unmanaged<Self>.fromOpaque(pointer).takeUnretainedValue()
-    }
-
+class EventComposer {
     /// キーの押下と長押しを区別する閾値。押下の場合のみ、英数・かなキーのイベントを発火する。
     ///
     /// `300 * 1000 * 1000 ns = 300 ms`
-    private var threshold: CGEventTimestamp = 300 * 1000 * 1000
+    private let threshold: CGEventTimestamp = 300 * 1000 * 1000
 
     /// イベントタップ。
     private var tap: CFMachPort?
@@ -30,14 +24,13 @@ class EventComposer: NSObject {
     private var right: CGEventTimestamp?
 
     /// キー変換の状態をリセットする。
-    ///
     private func clear() {
         self.left = nil
         self.right = nil
     }
 
     /// コマンドキーのイベントを処理する。
-    private func handleCommands(_ event: CGEvent, _ proxy: CGEventTapProxy) {
+    private func handleCommands(_ event: CGEvent) {
         let keycode = event.getIntegerValueField(.keyboardEventKeycode)
 
         switch keycode {
@@ -51,14 +44,13 @@ class EventComposer: NSObject {
                 if let left = self.left {
                     // 閾値以下の間隔でkeyupが発生した場合、英数キーを押す
                     if event.timestamp - left < self.threshold {
-                        press(.jisEisu, proxy)
+                        press(.jisEisu)
                     }
 
                     // keyupとみなす
                     self.left = nil
                 }
             }
-            break
         case COMMAND_RIGHT:
             if event.flags.contains(.maskRightCommand) {
                 if self.right == nil {
@@ -69,30 +61,26 @@ class EventComposer: NSObject {
                 if let right = self.right {
                     // 閾値以下の間隔でkeyupが発生した場合、かなキーを押す
                     if event.timestamp - right < self.threshold {
-                        press(.jisKana, proxy)
+                        press(.jisKana)
                     }
 
                     // keyupとみなす
                     self.right = nil
                 }
             }
-            break
         default:
             break
         }
     }
 
     /// イベントを処理する。
-    private func handle(_ proxy: CGEventTapProxy, _ type: CGEventType, _ event: CGEvent) -> CGEvent?
-    {
+    private func handle(_ type: CGEventType, _ event: CGEvent) {
         switch type {
-        case .tapDisabledByTimeout:
+        case .tapDisabledByTimeout, .tapDisabledByUserInput:
             // スリープ等により無効になった状態から復帰する。
-
             guard let tap = self.tap else {
                 print("[CommandSource]: The previous tap not found.")
                 exit(1)
-                break
             }
 
             clear()
@@ -100,19 +88,17 @@ class EventComposer: NSObject {
             enableTap(tap)
         case .flagsChanged:
             // Commandキーの上下を検知する。
-            handleCommands(event, proxy)
+            handleCommands(event)
         case .keyDown:
             // Command + ? が発生したとみなす。
             clear()
         default:
             break
         }
-
-        return event
     }
 
     /// 指定されたキーコードのキーを押す（keydown + keyup）。
-    private func press(_ keyCode: CGKeyCode, _ proxy: CGEventTapProxy) {
+    private func press(_ keyCode: CGKeyCode) {
         guard let keydown = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
         else {
             return
@@ -126,28 +112,29 @@ class EventComposer: NSObject {
         keydown.flags = .maskNonCoalesced
         keyup.flags = .maskNonCoalesced
 
-        keydown.tapPostEvent(proxy)
-        keyup.tapPostEvent(proxy)
+        keydown.post(tap: .cghidEventTap)
+        keyup.post(tap: .cghidEventTap)
     }
 
-    /// イベントタップを作成する。x
+    /// イベントタップを作成する。
+    ///
+    /// イベントを書き換えたり握りつぶしたりはしないので、listen-only（受動）タップにする。
+    /// 受動タップならOSはこのアプリの応答を待たないため、キー入力の遅延を引き起こさない。
     private func createTap() -> CFMachPort? {
         return CGEvent.tapCreate(
             tap: .cghidEventTap,
             place: .tailAppendEventTap,
-            options: .defaultTap,
+            options: .listenOnly,
             eventsOfInterest: .fromTypes(.flagsChanged, .keyDown),
-            callback: { proxy, type, event, refcon in
-                guard let refcon = refcon else {
-                    return Unmanaged.passUnretained(event)
+            callback: { _, type, event, refcon in
+                if let refcon = refcon {
+                    Unmanaged<EventComposer>.fromOpaque(refcon).takeUnretainedValue()
+                        .handle(type, event)
                 }
 
-                return EventComposer.fromOpaque(refcon).handle(proxy, type, event).map {
-                    (event) -> Unmanaged<CGEvent> in
-                    Unmanaged.passUnretained(event)
-                }
+                return Unmanaged.passUnretained(event)
             },
-            userInfo: UnsafeMutableRawPointer(Unmanaged.passRetained(self).toOpaque())
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
         )
     }
 
@@ -166,14 +153,14 @@ class EventComposer: NSObject {
         return CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
     }
 
-    /// 入力ソースを現在の実行ループに追加する。
+    /// 入力ソースをメインスレッドの実行ループに追加する。
     private func addSource(_ source: CFRunLoopSource) {
-        CFRunLoopAddSource(CFRunLoopGetCurrent(), source, CFRunLoopMode.commonModes)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, CFRunLoopMode.commonModes)
     }
 
     /// 入力ソースを削除する。
     private func removeSource(_ source: CFRunLoopSource) {
-        CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, CFRunLoopMode.commonModes)
+        CFRunLoopRemoveSource(CFRunLoopGetMain(), source, CFRunLoopMode.commonModes)
         CFRunLoopSourceInvalidate(source)
     }
 
